@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seller Dashboard - UbuntuTrade</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+<div class="container">
+    <div class="top-bar">
+        <h1><a href="../index.html">UbuntuTrade</a></h1>
+        <div class="user-links">
+            <a href="../index.html">Home</a>
+            <a href="../php/logout.php">Logout</a>
+        </div>
+    </div>
+    <div class="content">
+        <div class="back-button" style="margin-bottom:20px;">
+            <button onclick="history.back()" class="btn-back">← Back</button>
+        </div>
+        <h2>Seller Dashboard</h2>
+
+        <!-- Verification Status -->
+        <div id="verificationStatus" style="margin:16px 0;padding:16px 20px;border-radius:12px;background:#f6f7f9;border:1px solid #ededed;">
+            Loading verification status...
+        </div>
+
+        <div style="display:flex;gap:16px;flex-wrap:wrap;margin:16px 0 24px;">
+            <a href="add_listing.html" class="btn">+ Add Product</a>
+        </div>
+
+        <h3>Your Listings</h3>
+        <div id="myListings">Loading...</div>
+
+        <h3 style="margin-top:32px;">Incoming Orders</h3>
+        <div id="myOrders">Loading...</div>
+    </div>
+    <div class="footer">&copy; 2026 UbuntuTrade</div>
+</div>
+
+<script>
+    function escapeHtml(s) {
+        if (!s) return '';
+        return s.replace(/[&<>]/g, m => m === '&' ? '&amp;' : (m === '<' ? '&lt;' : '&gt;'));
+    }
+
+    // Load verification status
+    function loadVerificationStatus() {
+        fetch('../php/get_session.php')
+            .then(res => res.json())
+            .then(data => {
+                const container = document.getElementById('verificationStatus');
+                if (data.is_seller) {
+                    // Check verification status from database
+                    fetch('../php/seller_get_verification_status.php')
+                        .then(res => res.json())
+                        .then(status => {
+                            let statusText = '';
+                            let statusColor = '';
+                            let buttonHtml = '';
+                            switch(status.status) {
+                                case 'verified':
+                                    statusText = '✅ Verified Seller';
+                                    statusColor = '#2c5e2e';
+                                    break;
+                                case 'pending':
+                                    statusText = '⏳ Verification Pending...';
+                                    statusColor = '#f4a261';
+                                    break;
+                                case 'rejected':
+                                    statusText = '❌ Verification Rejected';
+                                    statusColor = '#b33c3c';
+                                    buttonHtml = '<button onclick="requestVerification()" style="margin-left:12px;">Request Again</button>';
+                                    break;
+                                default:
+                                    statusText = 'Not Verified';
+                                    statusColor = '#888';
+                                    buttonHtml = '<button onclick="requestVerification()" style="margin-left:12px;">Request Verification</button>';
+                            }
+                            container.innerHTML = `
+                                <strong style="color:${statusColor};">${statusText}</strong>
+                                ${buttonHtml}
+                                ${status.status === 'verified' ? '<span style="margin-left:12px;font-size:0.8rem;color:#666;">ID verified ✅</span>' : ''}
+                            `;
+                        });
+                } else {
+                    container.innerHTML = '<span style="color:#888;">You are not a seller. Upgrade your account to sell.</span>';
+                }
+            });
+    }
+
+    // Request verification - shows modal with ID input
+    function requestVerification() {
+        // Create modal overlay
+        const modal = document.createElement('div');
+        modal.style.cssText = `
+            position: fixed; top:0; left:0; width:100%; height:100%;
+            background: rgba(0,0,0,0.5); z-index:9999;
+            display:flex; justify-content:center; align-items:center;
+        `;
+        modal.innerHTML = `
+            <div style="background:white;padding:32px;border-radius:16px;max-width:450px;width:90%;">
+                <h3 style="margin-bottom:12px;">Request Seller Verification</h3>
+                <p style="color:#666;font-size:0.9rem;margin-bottom:16px;">Enter your South African ID number to request verification.</p>
+                <form id="verificationForm">
+                    <label>SA ID Number (13 digits)</label>
+                    <input type="text" id="idNumber" placeholder="e.g., 8001015009087" maxlength="13" required>
+                    <button type="submit" style="width:100%;margin-top:12px;">Submit Request</button>
+                    <button type="button" onclick="this.closest('div[style]').parentElement.remove()" style="width:100%;margin-top:8px;background:#888;">Cancel</button>
+                </form>
+            </div>
+        `;
+        document.body.appendChild(modal);
+
+        // Handle form submission
+        document.getElementById('verificationForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const idNumber = document.getElementById('idNumber').value.trim();
+            if (!/^[0-9]{13}$/.test(idNumber)) {
+                alert('Invalid SA ID number. Must be 13 digits.');
+                return;
+            }
+            try {
+                const response = await fetch('../php/request_verification.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: `id_number=${idNumber}`
+                });
+                const data = await response.json();
+                alert(data.message || (data.success ? 'Request submitted!' : 'Error'));
+                if (data.success) {
+                    modal.remove();
+                    loadVerificationStatus();
+                }
+            } catch(err) {
+                alert('Error submitting request: ' + err.message);
+            }
+        });
+    }
+
+    function fetchListings() {
+        fetch('../php/seller_get_listings.php')
+            .then(res => res.json())
+            .then(data => {
+                if (!data.length) {
+                    document.getElementById('myListings').innerHTML = '<p style="color:#888;">You have no listings yet.</p>';
+                    return;
+                }
+                let html = '<table><tr><th>Title</th><th>Price</th><th>Status</th><th>Actions</th></tr>';
+                data.forEach(l => {
+                    html += `<tr>
+                                <td>${escapeHtml(l.title)}</td>
+                                <td>R ${l.price}</td>
+                                <td>${l.status}</td>
+                                <td>
+                                    <a href="edit_listing.html?id=${l.listing_id}">Edit</a> |
+                                    <button onclick="deleteListing(${l.listing_id})">Delete</button>
+                                </td>
+                             </tr>`;
+                });
+                html += '</table>';
+                document.getElementById('myListings').innerHTML = html;
+            });
+    }
+
+    function deleteListing(id) {
+        if (confirm('Delete this product?')) {
+            fetch(`../php/seller_delete_listing.php?id=${id}`)
+                .then(() => fetchListings());
+        }
+    }
+
+    function fetchOrders() {
+        fetch('../php/seller_get_orders.php')
+            .then(res => res.json())
+            .then(orders => {
+                if (!orders.length) {
+                    document.getElementById('myOrders').innerHTML = '<p style="color:#888;">No orders yet.</p>';
+                    return;
+                }
+                let html = '<table><tr><th>Product</th><th>Buyer</th><th>Amount</th><th>Payment</th><th>Action</th></tr>';
+                orders.forEach(o => {
+                    html += `<tr>
+                                <td>${escapeHtml(o.title)}</td>
+                                <td>${escapeHtml(o.buyer_name)}</td>
+                                <td>R ${o.total_amount}</td>
+                                <td>${o.payment_status}</td>
+                                <td><button onclick="markShipped(${o.order_id})">Mark Shipped</button></td>
+                             </tr>`;
+                });
+                html += '</table>';
+                document.getElementById('myOrders').innerHTML = html;
+            });
+    }
+
+    function markShipped(orderId) {
+        fetch(`../php/update_order_status.php?id=${orderId}&status=shipped`)
+            .then(() => fetchOrders());
+    }
+
+    // Create new PHP file for checking status
+    // php/seller_get_verification_status.php - see below
+
+    loadVerificationStatus();
+    fetchListings();
+    fetchOrders();
+</script>
+</body>
+</html>

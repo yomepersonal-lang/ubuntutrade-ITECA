@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Product - UbuntuTrade</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+<div class="container">
+    <div class="top-bar">
+        <h1><a href="index.html">UbuntuTrade</a></h1>
+        <div class="user-links" id="userLinks"></div>
+    </div>
+    <div class="content">
+        <div class="back-button" style="margin-bottom:20px;">
+            <button onclick="history.back()" class="btn-back">← Back</button>
+        </div>
+        <div id="productDetail">Loading product...</div>
+        <hr style="margin:30px 0;border:none;border-top:2px solid #eaeaea;">
+        <h3>Seller Reviews</h3>
+        <div id="reviewsList">Loading reviews...</div>
+        <div id="reviewForm" style="display:none;margin-top:20px;">
+            <h4>Write a review</h4>
+            <form id="reviewSubmitForm">
+                <input type="hidden" id="sellerId" value="">
+                <input type="hidden" id="listingId" value="">
+                <label>Rating (1-5):</label>
+                <select id="rating">
+                    <option>1</option><option>2</option><option>3</option><option>4</option><option>5</option>
+                </select>
+                <label>Comment:</label>
+                <textarea id="comment" rows="3"></textarea>
+                <button type="submit">Submit Review</button>
+            </form>
+        </div>
+    </div>
+    <div class="footer">&copy; 2026 UbuntuTrade</div>
+</div>
+
+<script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const productId = urlParams.get('id');
+    let currentSellerId = null;
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return str.replace(/[&<>]/g, function(m) {
+            if (m === '&') return '&amp;';
+            if (m === '<') return '&lt;';
+            if (m === '>') return '&gt;';
+            return m;
+        });
+    }
+
+    async function fetchJSON(url) {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`HTTP ${response.status} - ${response.statusText}`);
+        const text = await response.text();
+        try {
+            return JSON.parse(text);
+        } catch(e) {
+            console.error('Invalid JSON from', url, text.substring(0, 200));
+            throw new Error('Invalid JSON response');
+        }
+    }
+
+    async function loadProduct() {
+        try {
+            const product = await fetchJSON(`php/get_product.php?id=${productId}`);
+            if (product.error) {
+                document.getElementById('productDetail').innerHTML = `<p class="error">${escapeHtml(product.error)}</p>`;
+                return;
+            }
+            currentSellerId = product.seller_id;
+            document.getElementById('sellerId').value = currentSellerId;
+            document.getElementById('listingId').value = productId;
+
+            const container = document.getElementById('productDetail');
+            container.innerHTML = `
+                <div class="product-detail" style="display:flex;flex-wrap:wrap;gap:30px;">
+                    <div style="flex:1;min-width:280px;">
+                        <img src="uploads/${product.image_url || 'placeholder.png'}" class="product-img-large" style="width:100%;max-height:400px;object-fit:cover;">
+                    </div>
+                    <div style="flex:2;min-width:280px;">
+                        <h2 style="border-bottom:none;padding-bottom:0;">${escapeHtml(product.title)}</h2>
+                        <p style="font-size:1.1rem;color:#444;margin:12px 0;">${escapeHtml(product.description)}</p>
+                        <p style="font-size:1.4rem;font-weight:600;color:#1a1a1a;">R ${parseFloat(product.price).toFixed(2)}</p>
+                        <p style="color:#666;">Sold by: ${escapeHtml(product.seller_name)} ${product.id_verified ? '✅' : ''}</p>
+                        ${product.can_buy ? `<button onclick="addToCart(${product.listing_id})" class="btn" style="margin-top:12px;">Add to Cart</button>` : ''}
+                    </div>
+                </div>
+            `;
+            loadReviews(currentSellerId);
+            if (product.logged_in && product.current_user_id != product.seller_id) {
+                document.getElementById('reviewForm').style.display = 'block';
+            }
+        } catch(err) {
+            document.getElementById('productDetail').innerHTML = `<p class="error">Error loading product: ${err.message}</p>`;
+        }
+    }
+
+    async function loadReviews(sellerId) {
+        const revDiv = document.getElementById('reviewsList');
+        revDiv.innerHTML = 'Loading reviews...';
+        try {
+            const reviews = await fetchJSON(`php/get_reviews.php?seller_id=${sellerId}`);
+            if (!reviews.length) {
+                revDiv.innerHTML = '<p style="color:#888;">No reviews yet.</p>';
+                return;
+            }
+            revDiv.innerHTML = '';
+            reviews.forEach(r => {
+                revDiv.innerHTML += `
+                    <div class="review">
+                        <strong>${escapeHtml(r.full_name)}</strong> rated ${r.rating} stars<br>
+                        ${escapeHtml(r.comment)}
+                    </div>
+                `;
+            });
+        } catch(err) {
+            revDiv.innerHTML = `<p class="error">Failed to load reviews: ${err.message}</p>`;
+        }
+    }
+
+    async function addToCart(id) {
+        try {
+            await fetchJSON(`php/add_to_cart.php?id=${id}`);
+            alert('Added to cart!');
+        } catch(err) {
+            alert('Error adding to cart: ' + err.message);
+        }
+    }
+
+    document.getElementById('reviewSubmitForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const sellerId = document.getElementById('sellerId').value;
+        const rating = document.getElementById('rating').value;
+        const comment = document.getElementById('comment').value;
+        try {
+            const response = await fetch('php/add_review.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `seller_id=${sellerId}&rating=${rating}&comment=${encodeURIComponent(comment)}&product_id=${productId}`
+            });
+            if (response.ok) {
+                alert('Review added!');
+                location.reload();
+            } else {
+                alert('Failed to add review.');
+            }
+        } catch(err) {
+            alert('Error: ' + err.message);
+        }
+    });
+
+    async function loadUserLinks() {
+        try {
+            const data = await fetchJSON('php/get_session.php');
+            const links = document.getElementById('userLinks');
+            if (data.logged_in) {
+                let sellerLink = data.is_seller ? '<a href="seller/dashboard.html">Seller Panel</a>' : '';
+                let adminLink = data.is_admin ? '<a href="admin/index.html">Admin</a>' : '';
+                links.innerHTML = `
+                    <span>Hello, ${escapeHtml(data.full_name)}</span>
+                    ${sellerLink}
+                    ${adminLink}
+                    <a href="cart.html">Cart</a>
+                    <a href="php/logout.php">Logout</a>
+                `;
+            } else {
+                links.innerHTML = `<a href="login.html">Login</a> <a href="register.html">Register</a>`;
+            }
+        } catch(err) {
+            console.error('User links error:', err);
+        }
+    }
+
+    loadProduct();
+    loadUserLinks();
+</script>
+</body>
+</html>

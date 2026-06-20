@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cart - UbuntuTrade</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="js/script.js" defer></script>
+</head>
+<body>
+<div class="container">
+    <div class="top-bar">
+        <h1><a href="index.html">UbuntuTrade</a></h1>
+        <div class="user-links" id="userLinks"></div>
+    </div>
+    <div class="content">
+        <div class="back-button" style="margin-bottom:20px;">
+            <button onclick="history.back()" class="btn-back">← Back</button>
+        </div>
+        <h2>Your Cart</h2>
+        <div id="cartItems">Loading...</div>
+        <button id="checkoutBtn" class="btn" style="display:none;margin-top:16px;">Proceed to Checkout</button>
+    </div>
+    <div class="footer">&copy; 2026 UbuntuTrade</div>
+</div>
+
+<script>
+    function escapeHtml(str) {
+        if (!str) return '';
+        return str.replace(/[&<>]/g, function(m) {
+            if (m === '&') return '&amp;';
+            if (m === '<') return '&lt;';
+            if (m === '>') return '&gt;';
+            return m;
+        });
+    }
+
+    function loadCart() {
+        fetch('php/get_cart.php')
+            .then(res => res.json())
+            .then(cart => {
+                const container = document.getElementById('cartItems');
+                if (!cart.length) {
+                    container.innerHTML = '<p>Your cart is empty. <a href="index.html">Start shopping</a></p>';
+                    document.getElementById('checkoutBtn').style.display = 'none';
+                    return;
+                }
+                let html = '<table><tr><th>Product</th><th>Price</th><th>Action</th></tr>';
+                cart.forEach(item => {
+                    html += `<tr>
+                                <td>${escapeHtml(item.title)}</td>
+                                <td>R ${parseFloat(item.price).toFixed(2)}</td>
+                                <td><button onclick="removeFromCart(${item.listing_id})">Remove</button></td>
+                             </tr>`;
+                });
+                html += '</table>';
+                container.innerHTML = html;
+                document.getElementById('checkoutBtn').style.display = 'block';
+            });
+    }
+
+    function removeFromCart(id) {
+        fetch(`php/remove_from_cart.php?id=${id}`)
+            .then(() => loadCart());
+    }
+
+    document.getElementById('checkoutBtn').onclick = () => {
+        window.location.href = 'checkout.html';
+    };
+
+    fetch('php/get_session.php')
+        .then(res => res.json())
+        .then(data => {
+            const links = document.getElementById('userLinks');
+            if (data.logged_in) {
+                let sellerLink = data.is_seller ? '<a href="seller/dashboard.html">Seller Panel</a>' : '';
+                let adminLink = data.is_admin ? '<a href="admin/index.html">Admin</a>' : '';
+                links.innerHTML = `<span>Hello, ${escapeHtml(data.full_name)}</span> ${sellerLink} ${adminLink} <a href="php/logout.php">Logout</a>`;
+            } else {
+                links.innerHTML = `<a href="login.html">Login</a> <a href="register.html">Register</a>`;
+            }
+        });
+
+    loadCart();
+</script>
+</body>
+</html>

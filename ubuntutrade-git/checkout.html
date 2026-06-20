@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checkout - UbuntuTrade</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+<div class="container">
+    <div class="top-bar">
+        <h1><a href="index.html">UbuntuTrade</a></h1>
+        <div class="user-links" id="userLinks"></div>
+    </div>
+    <div class="content">
+        <div class="back-button" style="margin-bottom:20px;">
+            <button onclick="history.back()" class="btn-back">← Back</button>
+        </div>
+        <h2>Checkout</h2>
+        <div id="cartSummary">Loading cart...</div>
+        <form action="php/place_order.php" method="POST" id="checkoutForm">
+            <input type="hidden" name="checkout" value="1">
+            <button type="submit" class="btn" id="confirmBtn" style="display:none;margin-top:16px;">Confirm Order & Pay</button>
+        </form>
+    </div>
+    <div class="footer">&copy; 2026 UbuntuTrade</div>
+</div>
+
+<script>
+    function escapeHtml(s) {
+        if (!s) return '';
+        return s.replace(/[&<>]/g, m => m === '&' ? '&amp;' : (m === '<' ? '&lt;' : '&gt;'));
+    }
+
+    fetch('php/get_cart.php')
+        .then(res => res.json())
+        .then(cart => {
+            const div = document.getElementById('cartSummary');
+            const btn = document.getElementById('confirmBtn');
+            if (!cart.length) {
+                div.innerHTML = '<p>Your cart is empty. <a href="index.html">Go back</a></p>';
+                return;
+            }
+            let total = 0;
+            let html = '<table><tr><th>Product</th><th>Price</th></tr>';
+            cart.forEach(item => {
+                total += parseFloat(item.price);
+                html += `<tr><td>${escapeHtml(item.title)}</td><td>R ${item.price}</td></tr>`;
+            });
+            html += `<tr><td><strong>Total</strong></td><td><strong>R ${total.toFixed(2)}</strong></td></tr></table>`;
+            div.innerHTML = html;
+            btn.style.display = 'inline-block';
+        });
+
+    fetch('php/get_session.php')
+        .then(res => res.json())
+        .then(data => {
+            const links = document.getElementById('userLinks');
+            if (data.logged_in) {
+                let sellerLink = data.is_seller ? '<a href="seller/dashboard.html">Seller Panel</a>' : '';
+                let adminLink = data.is_admin ? '<a href="admin/index.html">Admin</a>' : '';
+                links.innerHTML = `<span>Hello, ${escapeHtml(data.full_name)}</span> ${sellerLink} ${adminLink} <a href="php/logout.php">Logout</a>`;
+            } else {
+                links.innerHTML = `<a href="login.html">Login</a> <a href="register.html">Register</a>`;
+            }
+        });
+</script>
+</body>
+</html>

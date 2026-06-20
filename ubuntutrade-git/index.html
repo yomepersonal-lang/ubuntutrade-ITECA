@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UbuntuTrade - Buy & Sell in SA</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="js/script.js" defer></script>
+</head>
+<body>
+<div class="container">
+    <div class="top-bar">
+        <h1><a href="index.html" style="color:white;">UbuntuTrade</a></h1>
+        <div class="user-links" id="userLinks">
+            
+        </div>
+    </div>
+    <div class="content">
+        <h2>Discover local goods</h2>
+        <div class="product-grid" id="productGrid">
+            <p>Loading products...</p>
+        </div>
+        <div class="back-button" style="margin-bottom: 15px;">
+            <button onclick="history.back()" class="btn-back">← Back</button>
+        </div>
+    </div>
+    <div class="footer">
+        &copy; 2026 UbuntuTrade – C2C for SA informal economy
+    </div>
+</div>
+
+<script>
+    // Helper to escape HTML
+    function escapeHtml(str) {
+        if (!str) return '';
+        return str.replace(/[&<>]/g, function(m) {
+            if (m === '&') return '&amp;';
+            if (m === '<') return '&lt;';
+            if (m === '>') return '&gt;';
+            return m;
+        });
+    }
+
+    // 1. Load products
+    fetch('php/get_products.php')
+        .then(res => res.json())
+        .then(products => {
+            const grid = document.getElementById('productGrid');
+            if (!products.length) {
+                grid.innerHTML = '<p>No products yet. Be the first to <a href="register.html">register as a seller</a>.</p>';
+                return;
+            }
+            grid.innerHTML = '';
+            products.forEach(p => {
+    const card = document.createElement('div');
+    card.className = 'product-card';
+    const verifiedBadge = p.is_verified ? '✅' : '';
+    card.innerHTML = `
+        <img src="uploads/${p.image_url || 'placeholder.png'}" class="product-img" alt="${escapeHtml(p.title)}">
+        <h3>${escapeHtml(p.title)}</h3>
+        <p class="price">R ${parseFloat(p.price).toFixed(2)}</p>
+        <p class="seller">by ${escapeHtml(p.seller_name)} ${verifiedBadge}</p>
+        <a href="product.html?id=${p.listing_id}" class="btn">View</a>
+    `;
+    grid.appendChild(card);
+});
+        })
+        .catch(err => {
+            console.error(err);
+            document.getElementById('productGrid').innerHTML = '<p>Error loading products. Please try again later.</p>';
+        });
+
+    // 2. Check login status and update top bar
+    fetch('php/get_session.php')
+        .then(res => res.json())
+        .then(data => {
+            const links = document.getElementById('userLinks');
+            if (data.logged_in) {
+                let sellerLink = '';
+                if (data.is_seller) sellerLink = '<a href="seller/dashboard.html">📦 Seller Panel</a>';
+                let adminLink = '';
+                if (data.is_admin) adminLink = '<a href="admin/index.html">⚙️ Admin</a>';
+                links.innerHTML = `
+                    <span>Hello, ${escapeHtml(data.full_name)}</span>
+                    ${sellerLink}
+                    ${adminLink}
+                    <a href="cart.html">🛒 Cart</a>
+                    <a href="php/logout.php">Logout</a>
+                `;
+            } else {
+                links.innerHTML = `<a href="login.html">Login</a> <a href="register.html">Register</a>`;
+            }
+        });
+</script>
+</body>
+</html>

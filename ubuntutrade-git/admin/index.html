@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - UbuntuTrade</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+<div class="container">
+    <div class="top-bar">
+        <h1>Admin Panel</h1>
+        <div class="user-links">
+            <a href="../index.html">View Marketplace</a>
+            <a href="../php/logout.php">Logout</a>
+        </div>
+    </div>
+    <div class="content">
+        <div class="back-button" style="margin-bottom:20px;">
+            <button onclick="history.back()" class="btn-back">← Back</button>
+        </div>
+        <h2>Administration Dashboard</h2>
+        <div style="display:flex;gap:16px;flex-wrap:wrap;margin:16px 0 24px;">
+            <a href="../index.html" class="btn btn-outline">🛒 Browse Marketplace</a>
+        </div>
+        <ul>
+            <li><a href="users.html">Manage Users (RBAC)</a></li>
+            <li><a href="roles.html">Manage Roles</a></li>
+            <li><a href="listings.html">Manage All Listings</a></li>
+            <li><a href="verification_requests.html" >Verification Requests</a></li>
+        </ul>
+    </div>
+    <div class="footer">&copy; 2026 UbuntuTrade</div>
+</div>
+</body>
+</html>

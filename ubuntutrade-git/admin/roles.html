@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Roles - UbuntuTrade Admin</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+<div class="container">
+    <div class="top-bar">
+        <h1><a href="index.html" style="color:white;">Admin</a></h1>
+        <div class="user-links"><a href="../php/logout.php">Logout</a></div>
+    </div>
+    <div class="content">
+        <div class="back-button" style="margin-bottom:20px;">
+            <button onclick="history.back()" class="btn-back">← Back</button>
+        </div>
+        <h2>System Roles (RBAC)</h2>
+
+        <h3>Add New Role</h3>
+        <form id="addRoleForm" style="max-width:500px;">
+            <label>Role Name</label>
+            <input type="text" name="role_name" placeholder="e.g., Support" required>
+            <label>Permissions (comma separated)</label>
+            <input type="text" name="permissions" placeholder="e.g., view,edit,delete">
+            <button type="submit">Add Role</button>
+        </form>
+
+        <h3 style="margin-top:32px;">Existing Roles</h3>
+        <div id="rolesList">Loading roles...</div>
+    </div>
+    <div class="footer">&copy; 2026 UbuntuTrade</div>
+</div>
+
+<script>
+    function escapeHtml(str) {
+        if (!str) return '';
+        return str.replace(/[&<>]/g, m => m === '&' ? '&amp;' : (m === '<' ? '&lt;' : '&gt;'));
+    }
+
+    function loadRoles() {
+        fetch('../php/admin_get_roles.php')
+            .then(res => res.json())
+            .then(data => {
+                const container = document.getElementById('rolesList');
+                if (data.error) {
+                    container.innerHTML = `<p class="error">Error: ${escapeHtml(data.error)}</p>`;
+                    return;
+                }
+                if (!Array.isArray(data)) {
+                    container.innerHTML = '<p class="error">Unexpected response format.</p>';
+                    return;
+                }
+                if (data.length === 0) {
+                    container.innerHTML = '<p>No roles defined.</p>';
+                    return;
+                }
+                let html = '<table><tr><th>ID</th><th>Role Name</th><th>Permissions</th><th>Actions</th></tr>';
+                data.forEach(r => {
+                    html += `<tr>
+                                <td>${r.role_id}</td>
+                                <td><input type="text" id="name_${r.role_id}" value="${escapeHtml(r.role_name)}" style="width:100%;"></td>
+                                <td><input type="text" id="perm_${r.role_id}" value="${escapeHtml(r.permissions || '')}" style="width:100%;"></td>
+                                <td>
+                                    <button onclick="updateRole(${r.role_id})">Update</button>
+                                    <button onclick="deleteRole(${r.role_id})">Delete</button>
+                                </td>
+                             </tr>`;
+                });
+                html += '</table>';
+                container.innerHTML = html;
+            })
+            .catch(err => {
+                document.getElementById('rolesList').innerHTML = `<p class="error">Failed to load roles: ${err.message}</p>`;
+            });
+    }
+
+    function updateRole(roleId) {
+        let name = document.getElementById(`name_${roleId}`).value;
+        let perms = document.getElementById(`perm_${roleId}`).value;
+        fetch(`../php/admin_update_role.php?role_id=${roleId}&role_name=${encodeURIComponent(name)}&permissions=${encodeURIComponent(perms)}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Role updated');
+                    loadRoles();
+                } else {
+                    alert('Error: ' + (data.error || 'Unknown'));
+                }
+            });
+    }
+
+    function deleteRole(roleId) {
+        if (!confirm('Delete this role?')) return;
+        fetch(`../php/admin_delete_role.php?id=${roleId}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Role deleted');
+                    loadRoles();
+                } else {
+                    alert('Error: ' + (data.error || 'Unknown'));
+                }
+            });
+    }
+
+    document.getElementById('addRoleForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        let name = e.target.role_name.value;
+        let perms = e.target.permissions.value;
+        fetch(`../php/admin_add_role.php?role_name=${encodeURIComponent(name)}&permissions=${encodeURIComponent(perms)}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Role added');
+                    loadRoles();
+                    e.target.reset();
+                } else {
+                    alert('Error: ' + (data.error || 'Unknown'));
+                }
+            });
+    });
+
+    loadRoles();
+</script>
+</body>
+</html>

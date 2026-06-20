@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Users - UbuntuTrade Admin</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+<div class="container">
+    <div class="top-bar">
+        <h1><a href="index.html" style="color:white;">Admin</a></h1>
+        <div class="user-links"><a href="../php/logout.php">Logout</a></div>
+    </div>
+    <div class="content">
+        <div class="back-button" style="margin-bottom:20px;">
+            <button onclick="history.back()" class="btn-back">← Back</button>
+        </div>
+        <h2>Manage Users (RBAC)</h2>
+
+        <div style="margin:16px 0;">
+            <a href="verification_requests.html" class="btn">📋 View Verification Requests</a>
+        </div>
+
+        <div id="userTable">Loading users...</div>
+    </div>
+    <div class="footer">&copy; 2026 UbuntuTrade</div>
+</div>
+
+<script>
+    function escapeHtml(str) {
+        if (!str) return '';
+        return str.replace(/[&<>]/g, function(m) {
+            if (m === '&') return '&amp;';
+            if (m === '<') return '&lt;';
+            if (m === '>') return '&gt;';
+            return m;
+        });
+    }
+
+    async function fetchJSON(url, options={}) {
+        const response = await fetch(url, options);
+        const text = await response.text();
+        try {
+            return JSON.parse(text);
+        } catch(e) {
+            console.error('Invalid JSON from', url, 'Raw:', text);
+            throw new Error(`Invalid JSON from ${url}`);
+        }
+    }
+
+    async function loadUsers() {
+        const container = document.getElementById('userTable');
+        try {
+            const data = await fetchJSON('../php/admin_get_users.php');
+            if (data.error) {
+                container.innerHTML = `<p class="error">Error: ${escapeHtml(data.error)}</p>`;
+                return;
+            }
+            if (!Array.isArray(data)) {
+                container.innerHTML = `<p class="error">Unexpected response format.</p>`;
+                return;
+            }
+            if (data.length === 0) {
+                container.innerHTML = '<p>No users found.</p>';
+                return;
+            }
+            let html = '<table><tr><th>ID</th><th>Name</th><th>Email</th><th>Role</th><th>Verified</th><th>Actions</th></tr>';
+            data.forEach(u => {
+                // Show verification status badge
+                let verifiedBadge = '';
+                let unverifyButton = '';
+                if (u.verification_status === 'verified') {
+                    verifiedBadge = '<span style="color:#2c5e2e;font-weight:600;">✅ Verified</span>';
+                    unverifyButton = `<button onclick="unverifySeller(${u.user_id})" style="background:#b33c3c;font-size:0.7rem;padding:4px 10px;">Unverify</button>`;
+                } else if (u.verification_status === 'pending') {
+                    verifiedBadge = '<span style="color:#f4a261;">⏳ Pending</span>';
+                } else {
+                    verifiedBadge = '<span style="color:#888;">Not verified</span>';
+                }
+
+                html += `<tr>
+                    <td>${u.user_id}</td>
+                    <td>${escapeHtml(u.full_name)}</td>
+                    <td>${escapeHtml(u.email)}</td>
+                    <td>
+                        <select onchange="updateRole(${u.user_id}, this.value)">
+                            <option value="1" ${u.role_id == 1 ? 'selected' : ''}>Admin</option>
+                            <option value="2" ${u.role_id == 2 ? 'selected' : ''}>Buyer</option>
+                            <option value="3" ${u.role_id == 3 ? 'selected' : ''}>Seller</option>
+                        </select>
+                    </td>
+                    <td>${verifiedBadge}</td>
+                    <td>
+                        ${unverifyButton}
+                        <button onclick="deleteUser(${u.user_id})">Delete</button>
+                    </td>
+                </tr>`;
+            });
+            html += '</table>';
+            container.innerHTML = html;
+        } catch(err) {
+            container.innerHTML = `<p class="error">Failed to load users: ${escapeHtml(err.message)}</p>`;
+        }
+    }
+
+    async function updateRole(userId, roleId) {
+        try {
+            const data = await fetchJSON(`../php/admin_update_user_role.php?user_id=${userId}&role_id=${roleId}`);
+            if (data.success) {
+                alert('Role updated!');
+                loadUsers();
+            } else {
+                alert('Error: ' + (data.error || 'Unknown error'));
+            }
+        } catch(err) {
+            alert('Request failed: ' + err.message);
+        }
+    }
+
+    async function unverifySeller(userId) {
+        if (!confirm('Unverify this seller? They will lose their verified badge.')) return;
+        try {
+            const data = await fetchJSON('../php/admin_unverify_seller.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `user_id=${userId}`
+            });
+            if (data.success) {
+                alert('Seller unverified.');
+                loadUsers();
+            } else {
+                alert('Error: ' + (data.error || 'Unknown error'));
+            }
+        } catch(err) {
+            alert('Request failed: ' + err.message);
+        }
+    }
+
+    async function deleteUser(userId) {
+        if (!confirm('Delete this user?')) return;
+        try {
+            const data = await fetchJSON(`../php/admin_delete_user.php?id=${userId}`);
+            if (data.success) {
+                alert('User deleted.');
+                loadUsers();
+            } else {
+                alert('Error: ' + (data.error || 'Unknown error'));
+            }
+        } catch(err) {
+            alert('Request failed: ' + err.message);
+        }
+    }
+
+    loadUsers();
+</script>
+</body>
+</html>
