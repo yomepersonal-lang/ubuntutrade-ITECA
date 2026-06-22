@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order History - UbuntuTrade Seller</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+<div class="container">
+    <div class="top-bar">
+        <h1><a href="../index.html">UbuntuTrade</a></h1>
+        <div class="user-links">
+            <a href="dashboard.html">Dashboard</a>
+            <a href="../php/logout.php">Logout</a>
+        </div>
+    </div>
+    <div class="content">
+        <div class="back-button" style="margin-bottom:20px;">
+            <button onclick="history.back()" class="btn-back">← Back</button>
+        </div>
+        <h2>My Order History</h2>
+        <p style="color:#666;margin-bottom:16px;">View all products you've sold and who bought them.</p>
+        <div id="orderHistory">Loading...</div>
+    </div>
+    <div class="footer">
+        <div class="footer-content">
+            <div class="footer-left">&copy; 2026 UbuntuTrade</div>
+            <div class="footer-contact">
+                <span class="contact-item">✉ <a href="mailto:support@ubuntutrade.co.za">support@ubuntutrade.co.za</a></span>
+                <span class="contact-item">📞 012 234 4567</span>
+                <span class="contact-item">📍 Johannesburg, South Africa</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function escapeHtml(str) {
+        if (!str) return '';
+        return str.replace(/[&<>]/g, function(m) {
+            if (m === '&') return '&amp;';
+            if (m === '<') return '&lt;';
+            if (m === '>') return '&gt;';
+            return m;
+        });
+    }
+
+    async function loadOrderHistory() {
+        const container = document.getElementById('orderHistory');
+        try {
+            const response = await fetch('../php/seller_get_order_history.php');
+            const data = await response.json();
+
+            if (data.error) {
+                container.innerHTML = `<p class="error">${escapeHtml(data.error)}</p>`;
+                return;
+            }
+
+            if (!data.length) {
+                container.innerHTML = '<p style="color:#888;">You haven\'t sold any products yet.</p>';
+                return;
+            }
+
+            // Removed "Status" column
+            let html = '<table>';
+            html += `<tr>
+                        <th>Order #</th>
+                        <th>Product</th>
+                        <th>Buyer</th>
+                        <th>Phone</th>
+                        <th>Amount</th>
+                        <th>Date</th>
+                    </tr>`;
+
+            data.forEach(o => {
+                html += `<tr>
+                            <td>#${o.order_id}</td>
+                            <td>${escapeHtml(o.product_title)}</td>
+                            <td>${escapeHtml(o.buyer_name)}</td>
+                            <td>${escapeHtml(o.buyer_phone)}</td>
+                            <td>R ${parseFloat(o.total_amount).toFixed(2)}</td>
+                            <td>${new Date(o.created_at).toLocaleDateString()}</td>
+                        </tr>`;
+            });
+            html += '</table>';
+            container.innerHTML = html;
+        } catch(err) {
+            container.innerHTML = `<p class="error">Failed to load order history: ${escapeHtml(err.message)}</p>`;
+        }
+    }
+
+    loadOrderHistory();
+</script>
+</body>
+</html>

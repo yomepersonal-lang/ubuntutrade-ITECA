@@ -19,19 +19,57 @@
         </div>
         <h2>System Roles (RBAC)</h2>
 
-        <h3>Add New Role</h3>
-        <form id="addRoleForm" style="max-width:500px;">
-            <label>Role Name</label>
-            <input type="text" name="role_name" placeholder="e.g., Support" required>
-            <label>Permissions (comma separated)</label>
-            <input type="text" name="permissions" placeholder="e.g., view,edit,delete">
-            <button type="submit">Add Role</button>
-        </form>
+        <!-- Add New Role -->
+        <div class="role-form-section">
+            <h3>Add New Role</h3>
+            <form id="addRoleForm">
+                <label>Role Name</label>
+                <input type="text" name="role_name" placeholder="e.g., Support" required style="max-width:300px;">
+
+                <div class="permissions-group-label">Select Permissions</div>
+                <div class="permissions-grid" id="permissionCheckboxes">
+                    <label><input type="checkbox" name="permissions[]" value="view_products"> View Products</label>
+                    <label><input type="checkbox" name="permissions[]" value="buy_products"> Buy Products</label>
+                    <label><input type="checkbox" name="permissions[]" value="add_listing"> Add Listing</label>
+                    <label><input type="checkbox" name="permissions[]" value="edit_own_listing"> Edit Own Listing</label>
+                    <label><input type="checkbox" name="permissions[]" value="delete_own_listing"> Delete Own Listing</label>
+                    <label><input type="checkbox" name="permissions[]" value="view_orders"> View Orders</label>
+                    <label><input type="checkbox" name="permissions[]" value="manage_orders"> Manage Orders</label>
+                    <label><input type="checkbox" name="permissions[]" value="manage_users"> Manage Users</label>
+                    <label><input type="checkbox" name="permissions[]" value="manage_roles"> Manage Roles</label>
+                    <label><input type="checkbox" name="permissions[]" value="manage_all_listings"> Manage All Listings</label>
+                    <label><input type="checkbox" name="permissions[]" value="verify_sellers"> Verify Sellers</label>
+                    <label><input type="checkbox" name="permissions[]" value="view_reports"> View Reports</label>
+                    <label><input type="checkbox" name="permissions[]" value="full_access"> Full Access (Admin)</label>
+                </div>
+                <button type="submit" style="margin-top:8px;">Add Role</button>
+            </form>
+        </div>
 
         <h3 style="margin-top:32px;">Existing Roles</h3>
         <div id="rolesList">Loading roles...</div>
     </div>
-    <div class="footer">&copy; 2026 UbuntuTrade</div>
+    <div class="footer">
+        <div class="footer-content">
+            <div class="footer-left">
+                &copy; 2026 UbuntuTrade – C2C for SA informal economy
+            </div>
+            <div class="footer-contact">
+                <span class="contact-item">
+                    <span class="icon">✉</span>
+                    <a href="mailto:support@ubuntutrade.co.za">support@ubuntutrade.co.za</a>
+                </span>
+                <span class="contact-item">
+                    <span class="icon">📞</span>
+                    <span>012 234 4567</span>
+                </span>
+                <span class="contact-item">
+                    <span class="icon">📍</span>
+                    <span>Johannesburg, South Africa</span>
+                </span>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -40,6 +78,7 @@
         return str.replace(/[&<>]/g, m => m === '&' ? '&amp;' : (m === '<' ? '&lt;' : '&gt;'));
     }
 
+    // Load roles
     function loadRoles() {
         fetch('../php/admin_get_roles.php')
             .then(res => res.json())
@@ -59,10 +98,24 @@
                 }
                 let html = '<table><tr><th>ID</th><th>Role Name</th><th>Permissions</th><th>Actions</th></tr>';
                 data.forEach(r => {
+                    // Show permissions as readable list
+                    let permDisplay = '';
+                    if (r.permissions) {
+                        const permArray = r.permissions.split(',');
+                        permDisplay = permArray.map(p => `<span style="display:inline-block;background:#f0f0f0;padding:2px 10px;border-radius:12px;font-size:0.7rem;margin:2px 4px 2px 0;">${escapeHtml(p.trim())}</span>`).join('');
+                    } else {
+                        permDisplay = '<span style="color:#999;">No permissions</span>';
+                    }
+
                     html += `<tr>
                                 <td>${r.role_id}</td>
                                 <td><input type="text" id="name_${r.role_id}" value="${escapeHtml(r.role_name)}" style="width:100%;"></td>
-                                <td><input type="text" id="perm_${r.role_id}" value="${escapeHtml(r.permissions || '')}" style="width:100%;"></td>
+                                <td>
+                                    <div style="display:flex;flex-wrap:wrap;gap:2px;">
+                                        ${permDisplay}
+                                    </div>
+                                    <button onclick="editPermissions(${r.role_id})" style="font-size:0.7rem;padding:2px 10px;margin-top:4px;">Edit Permissions</button>
+                                </td>
                                 <td>
                                     <button onclick="updateRole(${r.role_id})">Update</button>
                                     <button onclick="deleteRole(${r.role_id})">Delete</button>
@@ -77,14 +130,75 @@
             });
     }
 
-    function updateRole(roleId) {
-        let name = document.getElementById(`name_${roleId}`).value;
-        let perms = document.getElementById(`perm_${roleId}`).value;
-        fetch(`../php/admin_update_role.php?role_id=${roleId}&role_name=${encodeURIComponent(name)}&permissions=${encodeURIComponent(perms)}`)
+    // Edit permissions modal
+    function editPermissions(roleId) {
+        const currentRole = document.getElementById(`name_${roleId}`).value;
+        // Fetch current permissions
+        fetch(`../php/admin_get_role_permissions.php?role_id=${roleId}`)
+            .then(res => res.json())
+            .then(data => {
+                const currentPerms = data.permissions ? data.permissions.split(',') : [];
+                const modal = document.createElement('div');
+                modal.style.cssText = `
+                    position: fixed; top:0; left:0; width:100%; height:100%;
+                    background: rgba(0,0,0,0.5); z-index:9999;
+                    display:flex; justify-content:center; align-items:center;
+                `;
+                modal.innerHTML = `
+                    <div style="background:white;padding:32px;border-radius:16px;max-width:550px;width:90%;max-height:80vh;overflow-y:auto;">
+                        <h3 style="margin-bottom:12px;">Edit Permissions: ${escapeHtml(currentRole)}</h3>
+                        <div class="permissions-grid" id="editPermGrid">
+                            <label><input type="checkbox" value="view_products" ${currentPerms.includes('view_products')?'checked':''}> View Products</label>
+                            <label><input type="checkbox" value="buy_products" ${currentPerms.includes('buy_products')?'checked':''}> Buy Products</label>
+                            <label><input type="checkbox" value="add_listing" ${currentPerms.includes('add_listing')?'checked':''}> Add Listing</label>
+                            <label><input type="checkbox" value="edit_own_listing" ${currentPerms.includes('edit_own_listing')?'checked':''}> Edit Own Listing</label>
+                            <label><input type="checkbox" value="delete_own_listing" ${currentPerms.includes('delete_own_listing')?'checked':''}> Delete Own Listing</label>
+                            <label><input type="checkbox" value="view_orders" ${currentPerms.includes('view_orders')?'checked':''}> View Orders</label>
+                            <label><input type="checkbox" value="manage_orders" ${currentPerms.includes('manage_orders')?'checked':''}> Manage Orders</label>
+                            <label><input type="checkbox" value="manage_users" ${currentPerms.includes('manage_users')?'checked':''}> Manage Users</label>
+                            <label><input type="checkbox" value="manage_roles" ${currentPerms.includes('manage_roles')?'checked':''}> Manage Roles</label>
+                            <label><input type="checkbox" value="manage_all_listings" ${currentPerms.includes('manage_all_listings')?'checked':''}> Manage All Listings</label>
+                            <label><input type="checkbox" value="verify_sellers" ${currentPerms.includes('verify_sellers')?'checked':''}> Verify Sellers</label>
+                            <label><input type="checkbox" value="view_reports" ${currentPerms.includes('view_reports')?'checked':''}> View Reports</label>
+                            <label><input type="checkbox" value="full_access" ${currentPerms.includes('full_access')?'checked':''}> Full Access (Admin)</label>
+                        </div>
+                        <button onclick="savePermissions(${roleId})" style="margin-top:12px;">Save Permissions</button>
+                        <button onclick="this.closest('div[style]').parentElement.remove()" style="margin-top:12px;background:#888;">Cancel</button>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+            });
+    }
+
+    function savePermissions(roleId) {
+        const checkboxes = document.querySelectorAll('#editPermGrid input[type="checkbox"]:checked');
+        const perms = Array.from(checkboxes).map(cb => cb.value);
+        const permString = perms.join(',');
+        fetch(`../php/admin_update_role_permissions.php?role_id=${roleId}&permissions=${encodeURIComponent(permString)}`)
             .then(res => res.json())
             .then(data => {
                 if (data.success) {
-                    alert('Role updated');
+                    alert('Permissions updated');
+                    document.querySelector('#editPermGrid').closest('div[style]').parentElement.remove();
+                    loadRoles();
+                } else {
+                    alert('Error: ' + (data.error || 'Unknown'));
+                }
+            });
+    }
+
+    // Update role name
+    function updateRole(roleId) {
+        let name = document.getElementById(`name_${roleId}`).value;
+        if (!name) {
+            alert('Role name cannot be empty');
+            return;
+        }
+        fetch(`../php/admin_update_role.php?role_id=${roleId}&role_name=${encodeURIComponent(name)}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Role name updated');
                     loadRoles();
                 } else {
                     alert('Error: ' + (data.error || 'Unknown'));
@@ -106,17 +220,28 @@
             });
     }
 
+    // Add role form
     document.getElementById('addRoleForm').addEventListener('submit', (e) => {
         e.preventDefault();
-        let name = e.target.role_name.value;
-        let perms = e.target.permissions.value;
-        fetch(`../php/admin_add_role.php?role_name=${encodeURIComponent(name)}&permissions=${encodeURIComponent(perms)}`)
+        let name = e.target.role_name.value.trim();
+        if (!name) {
+            alert('Role name is required');
+            return;
+        }
+        // Get selected permissions
+        const checkboxes = document.querySelectorAll('#addRoleForm input[name="permissions[]"]:checked');
+        const perms = Array.from(checkboxes).map(cb => cb.value);
+        const permString = perms.join(',');
+
+        fetch(`../php/admin_add_role.php?role_name=${encodeURIComponent(name)}&permissions=${encodeURIComponent(permString)}`)
             .then(res => res.json())
             .then(data => {
                 if (data.success) {
                     alert('Role added');
                     loadRoles();
                     e.target.reset();
+                    // Uncheck all permission checkboxes
+                    document.querySelectorAll('#addRoleForm input[name="permissions[]"]').forEach(cb => cb.checked = false);
                 } else {
                     alert('Error: ' + (data.error || 'Unknown'));
                 }

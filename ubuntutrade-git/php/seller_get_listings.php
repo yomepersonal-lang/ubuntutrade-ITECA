@@ -11,7 +11,6 @@ if (!isSeller()) {
 
 $user_id = $_SESSION['user_id'];
 
-// Get user verification status for display
 $user_check = mysqli_query($conn, "SELECT verification_status FROM user WHERE user_id=$user_id");
 $user_data = mysqli_fetch_assoc($user_check);
 $verification_status = $user_data['verification_status'] ?? 'not_requested';

@@ -19,26 +19,154 @@
         <div class="login-box">
             <h2>Create Account</h2>
             <p style="font-size:0.85rem;color:#666;margin-bottom:20px;">Join the UbuntuTrade community</p>
-            <form action="php/register.php" method="POST">
+            <form action="php/register.php" method="POST" id="registerForm">
                 <label>Full Name</label>
                 <input type="text" name="full_name" required>
+
                 <label>Email</label>
                 <input type="email" name="email" required>
-                <label>Phone (optional)</label>
-                <input type="text" name="phone">
+
+                <label>Phone Number</label>
+                <input type="tel" name="phone" id="phone" required>
+                <div style="font-size:0.75rem;color:#888;margin-top:-4px;margin-bottom:6px;"></div>
+
                 <label>Password</label>
-                <input type="password" name="password" required>
+                <div class="password-wrapper">
+                    <input type="password" name="password" id="password" required minlength="6">
+                    <button type="button" class="toggle-password" onclick="togglePassword('password', this)">
+                        Show
+                    </button>
+                </div>
+                <div class="password-requirements" id="passwordRequirements">
+                    <span id="lengthReq" class="invalid">✗ At least 6 characters</span>
+                </div>
+
+                <label>Confirm Password</label>
+                <div class="password-wrapper">
+                    <input type="password" name="confirm_password" id="confirmPassword" required>
+                    <button type="button" class="toggle-password" onclick="togglePassword('confirmPassword', this)">
+                        Show
+                    </button>
+                </div>
+                <div class="password-match-hint" id="passwordMatchHint"></div>
+
                 <label>I want to:</label>
                 <select name="role">
                     <option value="2">Buy only</option>
                     <option value="3">Sell and buy</option>
                 </select>
+
                 <button type="submit" style="width:100%;margin-top:8px;">Register</button>
             </form>
             <p style="margin-top:20px;font-size:0.85rem;text-align:center;">Already have an account? <a href="login.html">Login</a></p>
         </div>
     </div>
-    <div class="footer">&copy; 2026 UbuntuTrade</div>
+    <div class="footer">
+        <div class="footer-content">
+            <div class="footer-left">
+                &copy; 2026 UbuntuTrade – C2C for SA informal economy
+            </div>
+            <div class="footer-contact">
+                <span class="contact-item">
+                    <span class="icon">✉</span>
+                    <a href="mailto:support@ubuntutrade.co.za">support@ubuntutrade.co.za</a>
+                </span>
+                <span class="contact-item">
+                    <span class="icon">📞</span>
+                    <span>012 234 4567</span>
+                </span>
+                <span class="contact-item">
+                    <span class="icon">📍</span>
+                    <span>Johannesburg, South Africa</span>
+                </span>
+            </div>
+        </div>
+    </div>
 </div>
+
+<script>
+    function togglePassword(inputId, button) {
+        const input = document.getElementById(inputId);
+        if (input.type === 'password') {
+            input.type = 'text';
+            button.textContent = 'Hide';
+        } else {
+            input.type = 'password';
+            button.textContent = 'Show';
+        }
+    }
+
+    // Password validation
+    const password = document.getElementById('password');
+    const confirmPassword = document.getElementById('confirmPassword');
+    const matchHint = document.getElementById('passwordMatchHint');
+    const lengthReq = document.getElementById('lengthReq');
+
+    password.addEventListener('input', function() {
+        if (this.value.length >= 6) {
+            lengthReq.className = 'valid';
+            lengthReq.textContent = '✓ At least 6 characters';
+        } else {
+            lengthReq.className = 'invalid';
+            lengthReq.textContent = '✗ At least 6 characters';
+        }
+        checkMatch();
+    });
+
+    confirmPassword.addEventListener('input', checkMatch);
+
+    function checkMatch() {
+        if (confirmPassword.value === '') {
+            matchHint.textContent = '';
+            matchHint.className = 'password-match-hint';
+            return;
+        }
+        if (password.value === confirmPassword.value) {
+            matchHint.textContent = '✓ Passwords match';
+            matchHint.className = 'password-match-hint match';
+        } else {
+            matchHint.textContent = '✗ Passwords do not match';
+            matchHint.className = 'password-match-hint mismatch';
+        }
+    }
+
+    // Form validation
+    document.getElementById('registerForm').addEventListener('submit', function(e) {
+        if (password.value !== confirmPassword.value) {
+            e.preventDefault();
+            alert('Passwords do not match!');
+            return false;
+        }
+        if (password.value.length < 6) {
+            e.preventDefault();
+            alert('Password must be at least 6 characters long.');
+            return false;
+        }
+        // Validate phone number (basic check)
+        const phone = document.getElementById('phone').value.trim();
+        if (!phone || phone.length < 10) {
+            e.preventDefault();
+            alert('Please enter a valid phone number (at least 10 digits).');
+            return false;
+        }
+        return true;
+    });
+
+    // Handle URL error parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    const error = urlParams.get('error');
+    if (error) {
+        let msg = '';
+        switch(error) {
+            case 'passwordmismatch': msg = 'Passwords do not match. Please try again.'; break;
+            case 'passwordshort': msg = 'Password must be at least 6 characters.'; break;
+            case 'emailexists': msg = 'Email already registered. Please use a different email.'; break;
+            case 'db': msg = 'Registration failed. Please try again.'; break;
+            case 'phonerequired': msg = 'Phone number is required.'; break;
+            default: msg = 'Registration failed. Please try again.';
+        }
+        alert(msg);
+    }
+</script>
 </body>
 </html>

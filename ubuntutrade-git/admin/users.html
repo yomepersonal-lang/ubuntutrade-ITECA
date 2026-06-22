@@ -25,7 +25,27 @@
 
         <div id="userTable">Loading users...</div>
     </div>
-    <div class="footer">&copy; 2026 UbuntuTrade</div>
+    <div class="footer">
+        <div class="footer-content">
+            <div class="footer-left">
+                &copy; 2026 UbuntuTrade – C2C for SA informal economy
+            </div>
+            <div class="footer-contact">
+                <span class="contact-item">
+                    <span class="icon">✉</span>
+                    <a href="mailto:support@ubuntutrade.co.za">support@ubuntutrade.co.za</a>
+                </span>
+                <span class="contact-item">
+                    <span class="icon">📞</span>
+                    <span>012 234 4567</span>
+                </span>
+                <span class="contact-item">
+                    <span class="icon">📍</span>
+                    <span>Johannesburg, South Africa</span>
+                </span>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -51,39 +71,41 @@
     }
 
     async function loadUsers() {
-        const container = document.getElementById('userTable');
-        try {
-            const data = await fetchJSON('../php/admin_get_users.php');
-            if (data.error) {
-                container.innerHTML = `<p class="error">Error: ${escapeHtml(data.error)}</p>`;
-                return;
+    const container = document.getElementById('userTable');
+    try {
+        const data = await fetchJSON('../php/admin_get_users.php');
+        if (data.error) {
+            container.innerHTML = `<p class="error">Error: ${escapeHtml(data.error)}</p>`;
+            return;
+        }
+        if (!Array.isArray(data)) {
+            container.innerHTML = `<p class="error">Unexpected response format.</p>`;
+            return;
+        }
+        if (data.length === 0) {
+            container.innerHTML = '<p>No users found.</p>';
+            return;
+        }
+        // Added Phone header to match the data row
+        let html = '<table><tr><th>ID</th><th>Name</th><th>Email</th><th>Phone</th><th>Role</th><th>Verified</th><th>Actions</th></tr>';
+        data.forEach(u => {
+            // Show verification status badge
+            let verifiedBadge = '';
+            let unverifyButton = '';
+            if (u.verification_status === 'verified') {
+                verifiedBadge = '<span style="color:#2c5e2e;font-weight:600;">✅ Verified</span>';
+                unverifyButton = `<button onclick="unverifySeller(${u.user_id})" style="background:#b33c3c;font-size:0.7rem;padding:4px 10px;">Unverify</button>`;
+            } else if (u.verification_status === 'pending') {
+                verifiedBadge = '<span style="color:#f4a261;">⏳ Pending</span>';
+            } else {
+                verifiedBadge = '<span style="color:#888;">Not verified</span>';
             }
-            if (!Array.isArray(data)) {
-                container.innerHTML = `<p class="error">Unexpected response format.</p>`;
-                return;
-            }
-            if (data.length === 0) {
-                container.innerHTML = '<p>No users found.</p>';
-                return;
-            }
-            let html = '<table><tr><th>ID</th><th>Name</th><th>Email</th><th>Role</th><th>Verified</th><th>Actions</th></tr>';
-            data.forEach(u => {
-                // Show verification status badge
-                let verifiedBadge = '';
-                let unverifyButton = '';
-                if (u.verification_status === 'verified') {
-                    verifiedBadge = '<span style="color:#2c5e2e;font-weight:600;">✅ Verified</span>';
-                    unverifyButton = `<button onclick="unverifySeller(${u.user_id})" style="background:#b33c3c;font-size:0.7rem;padding:4px 10px;">Unverify</button>`;
-                } else if (u.verification_status === 'pending') {
-                    verifiedBadge = '<span style="color:#f4a261;">⏳ Pending</span>';
-                } else {
-                    verifiedBadge = '<span style="color:#888;">Not verified</span>';
-                }
 
-                html += `<tr>
+            html += `<tr>
                     <td>${u.user_id}</td>
                     <td>${escapeHtml(u.full_name)}</td>
                     <td>${escapeHtml(u.email)}</td>
+                    <td>${escapeHtml(u.phone)}</td>
                     <td>
                         <select onchange="updateRole(${u.user_id}, this.value)">
                             <option value="1" ${u.role_id == 1 ? 'selected' : ''}>Admin</option>
@@ -97,13 +119,13 @@
                         <button onclick="deleteUser(${u.user_id})">Delete</button>
                     </td>
                 </tr>`;
-            });
-            html += '</table>';
-            container.innerHTML = html;
-        } catch(err) {
-            container.innerHTML = `<p class="error">Failed to load users: ${escapeHtml(err.message)}</p>`;
-        }
+        });
+        html += '</table>';
+        container.innerHTML = html;
+    } catch(err) {
+        container.innerHTML = `<p class="error">Failed to load users: ${escapeHtml(err.message)}</p>`;
     }
+}
 
     async function updateRole(userId, roleId) {
         try {

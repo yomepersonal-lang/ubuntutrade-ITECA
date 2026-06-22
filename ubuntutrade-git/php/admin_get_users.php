@@ -7,7 +7,7 @@ if (!isAdmin()) {
     exit;
 }
 
-$sql = "SELECT u.user_id, u.full_name, u.email, u.role_id, r.role_name, 
+$sql = "SELECT u.user_id, u.full_name, u.email, u.phone, u.role_id, r.role_name, 
                u.verification_status, u.id_number
         FROM user u 
         JOIN role r ON u.role_id = r.role_id

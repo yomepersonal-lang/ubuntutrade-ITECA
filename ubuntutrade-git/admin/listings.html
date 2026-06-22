@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,63 +8,84 @@
     <link rel="stylesheet" href="../css/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
+
 <body>
-<div class="container">
-    <div class="top-bar">
-        <h1><a href="index.html" style="color:white;">Admin</a></h1>
-        <div class="user-links">
-            <a href="index.html">Home</a>
-            <a href="../php/logout.php">Logout</a>
+    <div class="container">
+        <div class="top-bar">
+            <h1><a href="index.html" style="color:white;">Admin</a></h1>
+            <div class="user-links">
+                <a href="index.html">Home</a>
+                <a href="../php/logout.php">Logout</a>
+            </div>
+        </div>
+        <div class="content">
+            <div class="back-button" style="margin-bottom:20px;">
+                <button onclick="history.back()" class="btn-back">← Back</button>
+            </div>
+            <h2>All User Listings</h2>
+            <div id="listingsTable">Loading listings...</div>
+        </div>
+        <div class="footer">
+            <div class="footer-content">
+                <div class="footer-left">
+                    &copy; 2026 UbuntuTrade – C2C for SA informal economy
+                </div>
+                <div class="footer-contact">
+                    <span class="contact-item">
+                        <span class="icon">✉</span>
+                        <a href="mailto:support@ubuntutrade.co.za">support@ubuntutrade.co.za</a>
+                    </span>
+                    <span class="contact-item">
+                        <span class="icon">📞</span>
+                        <span>012 234 4567</span>
+                    </span>
+                    <span class="contact-item">
+                        <span class="icon">📍</span>
+                        <span>Johannesburg, South Africa</span>
+                    </span>
+                </div>
+            </div>
         </div>
     </div>
-    <div class="content">
-        <div class="back-button" style="margin-bottom:20px;">
-            <button onclick="history.back()" class="btn-back">← Back</button>
-        </div>
-        <h2>All User Listings</h2>
-        <div id="listingsTable">Loading listings...</div>
-    </div>
-    <div class="footer">&copy; 2026 UbuntuTrade</div>
-</div>
 
-<script>
-    function escapeHtml(str) {
-        if (!str) return '';
-        return str.replace(/[&<>]/g, function(m) {
-            if (m === '&') return '&amp;';
-            if (m === '<') return '&lt;';
-            if (m === '>') return '&gt;';
-            return m;
-        });
-    }
-
-    async function fetchJSON(url) {
-        const response = await fetch(url);
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const text = await response.text();
-        try {
-            return JSON.parse(text);
-        } catch(e) {
-            console.error('Invalid JSON from', url, text);
-            throw new Error('Invalid JSON response');
+    <script>
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/[&<>]/g, function (m) {
+                if (m === '&') return '&amp;';
+                if (m === '<') return '&lt;';
+                if (m === '>') return '&gt;';
+                return m;
+            });
         }
-    }
 
-    async function loadListings() {
-        const container = document.getElementById('listingsTable');
-        try {
-            const listings = await fetchJSON('../php/admin_get_all_listings.php');
-            if (!Array.isArray(listings)) {
-                container.innerHTML = `<p class="error">Unexpected response.</p>`;
-                return;
+        async function fetchJSON(url) {
+            const response = await fetch(url);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const text = await response.text();
+            try {
+                return JSON.parse(text);
+            } catch (e) {
+                console.error('Invalid JSON from', url, text);
+                throw new Error('Invalid JSON response');
             }
-            if (listings.length === 0) {
-                container.innerHTML = '<p>No listings found.</p>';
-                return;
-            }
-            let html = '<table><tr><th>ID</th><th>Seller</th><th>Title</th><th>Price (R)</th><th>Status</th><th>Actions</th></tr>';
-            listings.forEach(l => {
-                html += `<tr>
+        }
+
+        async function loadListings() {
+            const container = document.getElementById('listingsTable');
+            try {
+                const listings = await fetchJSON('../php/admin_get_all_listings.php');
+                if (!Array.isArray(listings)) {
+                    container.innerHTML = `<p class="error">Unexpected response.</p>`;
+                    return;
+                }
+                if (listings.length === 0) {
+                    container.innerHTML = '<p>No listings found.</p>';
+                    return;
+                }
+                let html = '<table><tr><th>ID</th><th>Seller</th><th>Title</th><th>Price (R)</th><th>Status</th><th>Actions</th></tr>';
+                listings.forEach(l => {
+                    html += `<tr>
                             <td>${l.listing_id}</td>
                             <td>${escapeHtml(l.seller_name)} (ID: ${l.seller_id})</td>
                             <td>${escapeHtml(l.title)}</td>
@@ -77,44 +99,45 @@
                             </td>
                             <td><button onclick="deleteListing(${l.listing_id})">Delete</button></td>
                          </tr>`;
-            });
-            html += '</table>';
-            container.innerHTML = html;
-        } catch(err) {
-            container.innerHTML = `<p class="error">Failed to load listings: ${err.message}</p>`;
-        }
-    }
-
-    async function updateStatus(listingId, newStatus) {
-        try {
-            const result = await fetchJSON(`../php/admin_update_listing_status.php?listing_id=${listingId}&status=${newStatus}`);
-            if (result.success) {
-                alert('Status updated');
-                loadListings();
-            } else {
-                alert('Error: ' + (result.error || 'Unknown'));
+                });
+                html += '</table>';
+                container.innerHTML = html;
+            } catch (err) {
+                container.innerHTML = `<p class="error">Failed to load listings: ${err.message}</p>`;
             }
-        } catch(err) {
-            alert('Request failed: ' + err.message);
         }
-    }
 
-    async function deleteListing(listingId) {
-        if (!confirm('Delete this listing permanently?')) return;
-        try {
-            const result = await fetchJSON(`../php/admin_delete_listing.php?listing_id=${listingId}`);
-            if (result.success) {
-                alert('Listing deleted');
-                loadListings();
-            } else {
-                alert('Error: ' + (result.error || 'Unknown'));
+        async function updateStatus(listingId, newStatus) {
+            try {
+                const result = await fetchJSON(`../php/admin_update_listing_status.php?listing_id=${listingId}&status=${newStatus}`);
+                if (result.success) {
+                    alert('Status updated');
+                    loadListings();
+                } else {
+                    alert('Error: ' + (result.error || 'Unknown'));
+                }
+            } catch (err) {
+                alert('Request failed: ' + err.message);
             }
-        } catch(err) {
-            alert('Request failed: ' + err.message);
         }
-    }
 
-    loadListings();
-</script>
+        async function deleteListing(listingId) {
+            if (!confirm('Delete this listing permanently?')) return;
+            try {
+                const result = await fetchJSON(`../php/admin_delete_listing.php?listing_id=${listingId}`);
+                if (result.success) {
+                    alert('Listing deleted');
+                    loadListings();
+                } else {
+                    alert('Error: ' + (result.error || 'Unknown'));
+                }
+            } catch (err) {
+                alert('Request failed: ' + err.message);
+            }
+        }
+
+        loadListings();
+    </script>
 </body>
+
 </html>

@@ -141,25 +141,6 @@ INSERT INTO `payment` (`order_id`, `amount`, `gateway_txn_id`, `escrow_released`
 (1, 150.00, 'TEST_SIM_001', 0);
 
 
-
--- Add verification columns to user table
-ALTER TABLE `user` 
-ADD COLUMN `id_number` varchar(13) DEFAULT NULL,
-ADD COLUMN `verification_status` enum('not_requested','pending','verified','rejected') DEFAULT 'not_requested';
-
--- Create verification requests table
-CREATE TABLE `verification_requests` (
-  `request_id` int(11) NOT NULL AUTO_INCREMENT,
-  `user_id` int(11) NOT NULL,
-  `id_number` varchar(13) NOT NULL,
-  `status` enum('pending','approved','rejected') DEFAULT 'pending',
-  `requested_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `reviewed_at` timestamp NULL DEFAULT NULL,
-  `reviewed_by` int(11) DEFAULT NULL,
-  PRIMARY KEY (`request_id`),
-  FOREIGN KEY (`user_id`) REFERENCES `user`(`user_id`) ON DELETE CASCADE,
-  FOREIGN KEY (`reviewed_by`) REFERENCES `user`(`user_id`) ON DELETE SET NULL
-);
 -- --------------------------------------------------------
 -- Done
 -- --------------------------------------------------------

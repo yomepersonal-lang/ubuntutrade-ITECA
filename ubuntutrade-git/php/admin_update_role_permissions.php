@@ -8,14 +8,14 @@ if (!isAdmin()) {
 }
 
 $role_id = isset($_GET['role_id']) ? (int)$_GET['role_id'] : 0;
-$role_name = isset($_GET['role_name']) ? mysqli_real_escape_string($conn, $_GET['role_name']) : '';
+$permissions = isset($_GET['permissions']) ? mysqli_real_escape_string($conn, $_GET['permissions']) : '';
 
-if ($role_id <= 0 || empty($role_name)) {
-    echo json_encode(['success' => false, 'error' => 'Invalid parameters']);
+if ($role_id <= 0) {
+    echo json_encode(['success' => false, 'error' => 'Invalid role ID']);
     exit;
 }
 
-$sql = "UPDATE role SET role_name='$role_name' WHERE role_id=$role_id";
+$sql = "UPDATE role SET permissions='$permissions' WHERE role_id=$role_id";
 if (mysqli_query($conn, $sql)) {
     echo json_encode(['success' => true]);
 } else {

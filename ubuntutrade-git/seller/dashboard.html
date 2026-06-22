@@ -22,13 +22,14 @@
         </div>
         <h2>Seller Dashboard</h2>
 
-        <!-- Verification Status -->
+        <!-- Verification Status - Hidden for Admin -->
         <div id="verificationStatus" style="margin:16px 0;padding:16px 20px;border-radius:12px;background:#f6f7f9;border:1px solid #ededed;">
             Loading verification status...
         </div>
 
         <div style="display:flex;gap:16px;flex-wrap:wrap;margin:16px 0 24px;">
             <a href="add_listing.html" class="btn">+ Add Product</a>
+            <a href="order_history.html" class="btn btn-outline">📋 Order History</a>
         </div>
 
         <h3>Your Listings</h3>
@@ -37,7 +38,27 @@
         <h3 style="margin-top:32px;">Incoming Orders</h3>
         <div id="myOrders">Loading...</div>
     </div>
-    <div class="footer">&copy; 2026 UbuntuTrade</div>
+    <div class="footer">
+        <div class="footer-content">
+            <div class="footer-left">
+                &copy; 2026 UbuntuTrade – C2C for SA informal economy
+            </div>
+            <div class="footer-contact">
+                <span class="contact-item">
+                    <span class="icon">✉</span>
+                    <a href="mailto:support@ubuntutrade.co.za">support@ubuntutrade.co.za</a>
+                </span>
+                <span class="contact-item">
+                    <span class="icon">📞</span>
+                    <span>012 234 4567</span>
+                </span>
+                <span class="contact-item">
+                    <span class="icon">📍</span>
+                    <span>Johannesburg, South Africa</span>
+                </span>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -46,14 +67,19 @@
         return s.replace(/[&<>]/g, m => m === '&' ? '&amp;' : (m === '<' ? '&lt;' : '&gt;'));
     }
 
-    // Load verification status
     function loadVerificationStatus() {
         fetch('../php/get_session.php')
             .then(res => res.json())
             .then(data => {
                 const container = document.getElementById('verificationStatus');
+                
+                if (data.is_admin) {
+                    container.innerHTML = '<span style="color:#2c5e2e;font-weight:500;">✅ Admin account – automatically verified</span>';
+                    return;
+                }
+                
                 if (data.is_seller) {
-                    // Check verification status from database
+    
                     fetch('../php/seller_get_verification_status.php')
                         .then(res => res.json())
                         .then(status => {
@@ -91,53 +117,62 @@
             });
     }
 
-    // Request verification - shows modal with ID input
-    function requestVerification() {
-        // Create modal overlay
-        const modal = document.createElement('div');
-        modal.style.cssText = `
-            position: fixed; top:0; left:0; width:100%; height:100%;
-            background: rgba(0,0,0,0.5); z-index:9999;
-            display:flex; justify-content:center; align-items:center;
-        `;
-        modal.innerHTML = `
-            <div style="background:white;padding:32px;border-radius:16px;max-width:450px;width:90%;">
-                <h3 style="margin-bottom:12px;">Request Seller Verification</h3>
-                <p style="color:#666;font-size:0.9rem;margin-bottom:16px;">Enter your South African ID number to request verification.</p>
-                <form id="verificationForm">
-                    <label>SA ID Number (13 digits)</label>
-                    <input type="text" id="idNumber" placeholder="e.g., 8001015009087" maxlength="13" required>
-                    <button type="submit" style="width:100%;margin-top:12px;">Submit Request</button>
-                    <button type="button" onclick="this.closest('div[style]').parentElement.remove()" style="width:100%;margin-top:8px;background:#888;">Cancel</button>
-                </form>
-            </div>
-        `;
-        document.body.appendChild(modal);
 
-        // Handle form submission
-        document.getElementById('verificationForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const idNumber = document.getElementById('idNumber').value.trim();
-            if (!/^[0-9]{13}$/.test(idNumber)) {
-                alert('Invalid SA ID number. Must be 13 digits.');
-                return;
-            }
-            try {
-                const response = await fetch('../php/request_verification.php', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: `id_number=${idNumber}`
-                });
-                const data = await response.json();
-                alert(data.message || (data.success ? 'Request submitted!' : 'Error'));
-                if (data.success) {
-                    modal.remove();
-                    loadVerificationStatus();
+    function requestVerification() {
+        fetch('../php/get_session.php')
+            .then(res => res.json())
+            .then(data => {
+                if (data.is_admin) {
+                    alert('Admin accounts are automatically verified and cannot request verification.');
+                    return;
                 }
-            } catch(err) {
-                alert('Error submitting request: ' + err.message);
-            }
-        });
+                
+                // Create modal overlay
+                const modal = document.createElement('div');
+                modal.style.cssText = `
+                    position: fixed; top:0; left:0; width:100%; height:100%;
+                    background: rgba(0,0,0,0.5); z-index:9999;
+                    display:flex; justify-content:center; align-items:center;
+                `;
+                modal.innerHTML = `
+                    <div style="background:white;padding:32px;border-radius:16px;max-width:450px;width:90%;">
+                        <h3 style="margin-bottom:12px;">Request Seller Verification</h3>
+                        <p style="color:#666;font-size:0.9rem;margin-bottom:16px;">Enter your South African ID number to request verification.</p>
+                        <form id="verificationForm">
+                            <label>SA ID Number (13 digits)</label>
+                            <input type="text" id="idNumber" placeholder="e.g., 8001015009087" maxlength="13" required>
+                            <button type="submit" style="width:100%;margin-top:12px;">Submit Request</button>
+                            <button type="button" onclick="this.closest('div[style]').parentElement.remove()" style="width:100%;margin-top:8px;background:#888;">Cancel</button>
+                        </form>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+
+                // Handle form submission
+                document.getElementById('verificationForm').addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const idNumber = document.getElementById('idNumber').value.trim();
+                    if (!/^[0-9]{13}$/.test(idNumber)) {
+                        alert('Invalid SA ID number. Must be 13 digits.');
+                        return;
+                    }
+                    try {
+                        const response = await fetch('../php/request_verification.php', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                            body: `id_number=${idNumber}`
+                        });
+                        const data = await response.json();
+                        alert(data.message || (data.success ? 'Request submitted!' : 'Error'));
+                        if (data.success) {
+                            modal.remove();
+                            loadVerificationStatus();
+                        }
+                    } catch(err) {
+                        alert('Error submitting request: ' + err.message);
+                    }
+                });
+            });
     }
 
     function fetchListings() {
@@ -151,14 +186,14 @@
                 let html = '<table><tr><th>Title</th><th>Price</th><th>Status</th><th>Actions</th></tr>';
                 data.forEach(l => {
                     html += `<tr>
-                                <td>${escapeHtml(l.title)}</td>
-                                <td>R ${l.price}</td>
-                                <td>${l.status}</td>
-                                <td>
-                                    <a href="edit_listing.html?id=${l.listing_id}">Edit</a> |
-                                    <button onclick="deleteListing(${l.listing_id})">Delete</button>
-                                </td>
-                             </tr>`;
+                        <td>${escapeHtml(l.title)}</td>
+                        <td>R ${l.price}</td>
+                        <td>${l.status}</td>
+                        <td>
+                            <a href="edit_listing.php?id=${l.listing_id}">Edit</a> |
+                            <button onclick="deleteListing(${l.listing_id})">Delete</button>
+                        </td>
+                    </tr>`;
                 });
                 html += '</table>';
                 document.getElementById('myListings').innerHTML = html;
@@ -199,9 +234,6 @@
         fetch(`../php/update_order_status.php?id=${orderId}&status=shipped`)
             .then(() => fetchOrders());
     }
-
-    // Create new PHP file for checking status
-    // php/seller_get_verification_status.php - see below
 
     loadVerificationStatus();
     fetchListings();

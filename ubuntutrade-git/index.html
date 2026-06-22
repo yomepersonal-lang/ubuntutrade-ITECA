@@ -5,32 +5,84 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>UbuntuTrade - Buy & Sell in SA</title>
     <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="js/script.js" defer></script>
 </head>
 <body>
 <div class="container">
     <div class="top-bar">
-        <h1><a href="index.html" style="color:white;">UbuntuTrade</a></h1>
+        <h1><a href="index.html">UbuntuTrade</a></h1>
         <div class="user-links" id="userLinks">
-            
+            <!-- dynamic from JS -->
         </div>
     </div>
     <div class="content">
         <h2>Discover local goods</h2>
+
+        <!-- Search & Filter Section -->
+        <div class="search-section">
+            <div class="search-row">
+                <input type="text" id="searchInput" placeholder="Search products..." class="search-input">
+                <button onclick="applyFilters()" class="btn">Search</button>
+            </div>
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label>Category</label>
+                    <select id="categoryFilter">
+                        <option value="">All Categories</option>
+                        <option value="Electronics">Electronics</option>
+                        <option value="Clothing">Clothing</option>
+                        <option value="Home & Garden">Home & Garden</option>
+                        <option value="Beauty & Health">Beauty & Health</option>
+                        <option value="Automotive">Automotive</option>
+                        <option value="Sports & Outdoors">Sports & Outdoors</option>
+                        <option value="Toys & Games">Toys & Games</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Min Price (R)</label>
+                    <input type="number" id="minPrice" placeholder="0" min="0" step="10">
+                </div>
+                <div class="filter-group">
+                    <label>Max Price (R)</label>
+                    <input type="number" id="maxPrice" placeholder="Any" min="0" step="10">
+                </div>
+                <button onclick="clearFilters()" class="btn btn-outline" style="margin-top:18px;">Clear</button>
+            </div>
+        </div>
+
+        <div id="resultsCount" style="font-size:0.85rem;color:#888;margin:12px 0;"></div>
         <div class="product-grid" id="productGrid">
             <p>Loading products...</p>
         </div>
-        <div class="back-button" style="margin-bottom: 15px;">
-            <button onclick="history.back()" class="btn-back">← Back</button>
-        </div>
     </div>
     <div class="footer">
-        &copy; 2026 UbuntuTrade – C2C for SA informal economy
+        <div class="footer-content">
+            <div class="footer-left">
+                &copy; 2026 UbuntuTrade – C2C for SA informal economy
+            </div>
+            <div class="footer-contact">
+                <span class="contact-item">
+                    <span class="icon">✉</span>
+                    <a href="mailto:support@ubuntutrade.co.za">support@ubuntutrade.co.za</a>
+                </span>
+                <span class="contact-item">
+                    <span class="icon">📞</span>
+                    <span>012 234 4567</span>
+                </span>
+                <span class="contact-item">
+                    <span class="icon">📍</span>
+                    <span>Johannesburg, South Africa</span>
+                </span>
+            </div>
+        </div>
     </div>
 </div>
 
 <script>
-    // Helper to escape HTML
+    let allProducts = [];
+
     function escapeHtml(str) {
         if (!str) return '';
         return str.replace(/[&<>]/g, function(m) {
@@ -41,56 +93,111 @@
         });
     }
 
-    // 1. Load products
-    fetch('php/get_products.php')
-        .then(res => res.json())
-        .then(products => {
-            const grid = document.getElementById('productGrid');
-            if (!products.length) {
-                grid.innerHTML = '<p>No products yet. Be the first to <a href="register.html">register as a seller</a>.</p>';
-                return;
-            }
-            grid.innerHTML = '';
-            products.forEach(p => {
-    const card = document.createElement('div');
-    card.className = 'product-card';
-    const verifiedBadge = p.is_verified ? '✅' : '';
-    card.innerHTML = `
-        <img src="uploads/${p.image_url || 'placeholder.png'}" class="product-img" alt="${escapeHtml(p.title)}">
-        <h3>${escapeHtml(p.title)}</h3>
-        <p class="price">R ${parseFloat(p.price).toFixed(2)}</p>
-        <p class="seller">by ${escapeHtml(p.seller_name)} ${verifiedBadge}</p>
-        <a href="product.html?id=${p.listing_id}" class="btn">View</a>
-    `;
-    grid.appendChild(card);
-});
-        })
-        .catch(err => {
-            console.error(err);
-            document.getElementById('productGrid').innerHTML = '<p>Error loading products. Please try again later.</p>';
+    function loadProducts() {
+        fetch('php/get_products.php')
+            .then(res => res.json())
+            .then(products => {
+                allProducts = products;
+                applyFilters();
+            })
+            .catch(err => {
+                console.error(err);
+                document.getElementById('productGrid').innerHTML = '<p>Error loading products. Please try again later.</p>';
+            });
+    }
+
+    function applyFilters() {
+        const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
+        const category = document.getElementById('categoryFilter').value;
+        const minPrice = parseFloat(document.getElementById('minPrice').value) || 0;
+        const maxPrice = parseFloat(document.getElementById('maxPrice').value) || Infinity;
+
+        let filtered = allProducts.filter(p => {
+            const matchesSearch = searchTerm === '' || 
+                p.title.toLowerCase().includes(searchTerm) || 
+                p.seller_name.toLowerCase().includes(searchTerm);
+
+            //filter by price and category
+            const matchesCategory = category === '' || p.category === category;
+            const price = parseFloat(p.price);
+            const matchesPrice = price >= minPrice && price <= maxPrice;
+
+            return matchesSearch && matchesCategory && matchesPrice;
         });
 
-    // 2. Check login status and update top bar
+        const grid = document.getElementById('productGrid');
+        const count = document.getElementById('resultsCount');
+
+        if (filtered.length === 0) {
+            grid.innerHTML = '<p style="color:#888;">No products found matching your criteria.</p>';
+            count.textContent = '0 results';
+            return;
+        }
+
+        count.textContent = `${filtered.length} result${filtered.length > 1 ? 's' : ''}`;
+        grid.innerHTML = '';
+        filtered.forEach(p => {
+            const card = document.createElement('div');
+            card.className = 'product-card';
+            const verifiedBadge = p.is_verified ? '✅' : '';
+
+            const isSold = p.status === 'sold';
+            const soldBadge = isSold 
+                ? '<span style="display:inline-block;background:#1a1a1a;color:white;padding:2px 14px;border-radius:20px;font-size:0.7rem;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Sold</span>' 
+                : '';
+            const priceDisplay = isSold 
+                ? `<span style="text-decoration:line-through;color:#999;">R ${parseFloat(p.price).toFixed(2)}</span>`
+                : `R ${parseFloat(p.price).toFixed(2)}`;
+
+            card.innerHTML = `
+                <img src="uploads/${p.image_url || 'placeholder.png'}" class="product-img" alt="${escapeHtml(p.title)}">
+                ${soldBadge}
+                <h3>${escapeHtml(p.title)}</h3>
+                <p class="price">${priceDisplay}</p>
+                <p class="seller">by ${escapeHtml(p.seller_name)} ${verifiedBadge}</p>
+                <p class="seller-phone">📞 ${escapeHtml(p.seller_phone)}</p>
+                <a href="product.html?id=${p.listing_id}" class="btn">View</a>
+            `;
+            grid.appendChild(card);
+        });
+    }
+
+    function clearFilters() {
+        document.getElementById('searchInput').value = '';
+        document.getElementById('categoryFilter').value = '';
+        document.getElementById('minPrice').value = '';
+        document.getElementById('maxPrice').value = '';
+        applyFilters();
+    }
+
     fetch('php/get_session.php')
         .then(res => res.json())
         .then(data => {
             const links = document.getElementById('userLinks');
             if (data.logged_in) {
                 let sellerLink = '';
-                if (data.is_seller) sellerLink = '<a href="seller/dashboard.html">📦 Seller Panel</a>';
+                if (data.is_seller) sellerLink = '<a href="seller/dashboard.html">Seller Panel</a>';
                 let adminLink = '';
-                if (data.is_admin) adminLink = '<a href="admin/index.html">⚙️ Admin</a>';
+                if (data.is_admin) adminLink = '<a href="admin/index.html">Admin</a>';
                 links.innerHTML = `
                     <span>Hello, ${escapeHtml(data.full_name)}</span>
                     ${sellerLink}
                     ${adminLink}
-                    <a href="cart.html">🛒 Cart</a>
+                    <a href="cart.html">Cart</a>
                     <a href="php/logout.php">Logout</a>
                 `;
             } else {
                 links.innerHTML = `<a href="login.html">Login</a> <a href="register.html">Register</a>`;
             }
         });
+
+    loadProducts();
+
+    document.getElementById('searchInput').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            applyFilters();
+        }
+    });
 </script>
 </body>
 </html>

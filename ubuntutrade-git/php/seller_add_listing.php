@@ -6,13 +6,22 @@ if (!isSeller()) {
     echo "Access denied";
     exit;
 }
+
 $title = mysqli_real_escape_string($conn, $_POST['title']);
 $desc = mysqli_real_escape_string($conn, $_POST['description']);
 $price = (float)$_POST['price'];
 $cat = mysqli_real_escape_string($conn, $_POST['category']);
+
+// Validate price - must be positive
+if ($price <= 0) {
+    header("Location: ../seller/add_listing.html?error=invalid_price");
+    exit;
+}
+
 $image = $_FILES['image']['name'];
 $target = "../uploads/" . basename($image);
 move_uploaded_file($_FILES['image']['tmp_name'], $target);
+
 $sql = "INSERT INTO listing (seller_id, title, description, price, category, image_url) 
         VALUES ({$_SESSION['user_id']}, '$title', '$desc', $price, '$cat', '$image')";
 mysqli_query($conn, $sql);

@@ -36,7 +36,27 @@
             </form>
         </div>
     </div>
-    <div class="footer">&copy; 2026 UbuntuTrade</div>
+    <div class="footer">
+        <div class="footer-content">
+            <div class="footer-left">
+                &copy; 2026 UbuntuTrade – C2C for SA informal economy
+            </div>
+            <div class="footer-contact">
+                <span class="contact-item">
+                    <span class="icon">✉</span>
+                    <a href="mailto:support@ubuntutrade.co.za">support@ubuntutrade.co.za</a>
+                </span>
+                <span class="contact-item">
+                    <span class="icon">📞</span>
+                    <span>012 234 4567</span>
+                </span>
+                <span class="contact-item">
+                    <span class="icon">📍</span>
+                    <span>Johannesburg, South Africa</span>
+                </span>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -77,6 +97,8 @@
             document.getElementById('sellerId').value = currentSellerId;
             document.getElementById('listingId').value = productId;
 
+            const isSold = product.status === 'sold';
+
             const container = document.getElementById('productDetail');
             container.innerHTML = `
                 <div class="product-detail" style="display:flex;flex-wrap:wrap;gap:30px;">
@@ -84,11 +106,23 @@
                         <img src="uploads/${product.image_url || 'placeholder.png'}" class="product-img-large" style="width:100%;max-height:400px;object-fit:cover;">
                     </div>
                     <div style="flex:2;min-width:280px;">
+                        ${isSold ? '<span style="display:inline-block;background:#1a1a1a;color:white;padding:4px 16px;border-radius:20px;font-size:0.8rem;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;">Sold</span>' : ''}
                         <h2 style="border-bottom:none;padding-bottom:0;">${escapeHtml(product.title)}</h2>
                         <p style="font-size:1.1rem;color:#444;margin:12px 0;">${escapeHtml(product.description)}</p>
-                        <p style="font-size:1.4rem;font-weight:600;color:#1a1a1a;">R ${parseFloat(product.price).toFixed(2)}</p>
+                        <p style="font-size:1.4rem;font-weight:600;color:#1a1a1a;">
+                            ${isSold 
+                                ? `<span style="text-decoration:line-through;color:#999;">R ${parseFloat(product.price).toFixed(2)}</span>`
+                                : `R ${parseFloat(product.price).toFixed(2)}`
+                            }
+                        </p>
                         <p style="color:#666;">Sold by: ${escapeHtml(product.seller_name)} ${product.id_verified ? '✅' : ''}</p>
-                        ${product.can_buy ? `<button onclick="addToCart(${product.listing_id})" class="btn" style="margin-top:12px;">Add to Cart</button>` : ''}
+                        <p style="color:#666;">📞 ${escapeHtml(product.seller_phone)}</p>
+                        ${product.can_buy && !isSold 
+                            ? `<button onclick="addToCart(${product.listing_id})" class="btn" style="margin-top:12px;">Add to Cart</button>` 
+                            : isSold 
+                                ? '<p style="color:#b33c3c;font-weight:500;margin-top:12px;">This item has been sold.</p>'
+                                : ''
+                        }
                     </div>
                 </div>
             `;
