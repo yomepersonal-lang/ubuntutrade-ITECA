@@ -1,0 +1,8 @@
+# Sensitive config files
+php/payfast_config.php
+
+# Logs and temp files
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
