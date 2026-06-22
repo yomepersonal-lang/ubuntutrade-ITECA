@@ -1,10 +1,10 @@
 <?php
 
-define('PF_SANDBOX', true);  // true = test mode, false = live
+define('PF_SANDBOX', true);  
 
-define('PF_MERCHANT_ID', '10050155');     // REPLACE with your Sandbox ID
-define('PF_MERCHANT_KEY', 'hghgimsco5wwe'); // REPLACE with your Sandbox Key
-define('PF_PASSPHRASE', 'ubuntutrade123'); // REPLACE with your passphrase
+define('PF_MERCHANT_ID', '****');     //Sandbox ID
+define('PF_MERCHANT_KEY', '****'); // Sandbox Key
+define('PF_PASSPHRASE', '****');
 
 $base_url = 'https://ubuntutrade.page.gd';
 define('PF_RETURN_URL', $base_url . '/php/payment_success.php');
